@@ -1,2 +1,4 @@
 .env
 rate_limit.db
+venv
+.venv
