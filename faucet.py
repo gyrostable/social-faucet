@@ -15,7 +15,7 @@ RATE_LIMIT = 86400
 ADDRESS_LENGTH = 42
 DB_PATH = "rate_limit.db"
 
-SEND_VALUE = 10 ** 17
+SEND_VALUE = 2 * 10 ** 17
 
 
 load_dotenv()
