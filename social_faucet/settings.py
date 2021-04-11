@@ -29,7 +29,6 @@ LOG_FORMAT = "%(asctime)-15s - %(levelname)s - %(message)s"
 
 RATE_LIMIT = 86400
 ADDRESS_LENGTH = 42
-DB_PATH = "rate_limit.db"
 
 SEND_VALUE = 2 * 10 ** 17
 GAS_PRICE = 10 ** 9

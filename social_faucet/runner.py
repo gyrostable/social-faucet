@@ -13,8 +13,8 @@ from social_faucet.faucet_executor import FaucetExecutor
 from social_faucet.rate_limiter import RateLimiter
 
 
-def run_faucet(web3: Web3, faucet: Faucet):
-    with dbm.open(settings.DB_PATH, "c") as db:
+def run_faucet(web3: Web3, faucet: Faucet, db_path: str):
+    with dbm.open(db_path, "c") as db:
         rate_limiter = RateLimiter(db)
         transaction_builder = faucet.create_transaction_builder(web3)
         validators = faucet.create_validators()
@@ -28,17 +28,17 @@ def run_faucet(web3: Web3, faucet: Faucet):
         faucet.listen(faucet_executor)
 
 
-def run_kovan_faucet(faucet: Faucet):
+def run_kovan_faucet(faucet: Faucet, db_path: str):
     from web3.auto.infura.kovan import w3
 
-    run_faucet(w3, faucet)
+    run_faucet(w3, faucet, db_path)
 
 
-def run_twitter_kovan_faucet(keywords: List[str]):
+def run_twitter_kovan_faucet(keywords: List[str], db_path: str):
     faucet = TwitterKovanFaucet(keywords)
-    run_kovan_faucet(faucet)
+    run_kovan_faucet(faucet, db_path)
 
 
-def run_discord_tokens_kovan_faucet():
+def run_discord_tokens_kovan_faucet(db_path: str):
     faucet = DiscordMintTokensAsOwnerKovanFaucet()
-    run_kovan_faucet(faucet)
+    run_kovan_faucet(faucet, db_path)

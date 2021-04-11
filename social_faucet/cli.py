@@ -10,10 +10,12 @@ twitter_kovan_parser = subparsers.add_parser(
     "twitter-kovan", help="Runs Twitter Kovan Faucet sending ETH"
 )
 twitter_kovan_parser.add_argument("keywords", nargs="+")
+twitter_kovan_parser.add_argument("--db", required=True, help="Path to rate limit DB")
 
-discordkovan_parser = subparsers.add_parser(
+discord_kovan_parser = subparsers.add_parser(
     "discord-kovan-tokens", help="Runs Discord Kovan Faucet sending tokens"
 )
+discord_kovan_parser.add_argument("--db", required=True, help="Path to rate limit DB")
 
 
 def run():
@@ -24,9 +26,9 @@ def run():
         parser.error("no command provided")
 
     if args.command == "twitter-kovan":
-        runner.run_twitter_kovan_faucet(args.keywords)
+        runner.run_twitter_kovan_faucet(args.keywords, args.db)
     elif args.command == "discord-kovan-tokens":
-        runner.run_discord_tokens_kovan_faucet()
+        runner.run_discord_tokens_kovan_faucet(args.db)
 
 
 if __name__ == "__main__":
