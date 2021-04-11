@@ -1,4 +1,5 @@
 import logging
+
 from social_faucet.transaction_builder import TransactionBuilder
 from social_faucet.validation import ValidationError, Validator
 from typing import List, Optional
@@ -7,7 +8,7 @@ import web3
 
 from social_faucet import settings
 from social_faucet.rate_limiter import RateLimiter
-from social_faucet.types import Message
+from social_faucet.types import Message, Status
 
 
 def extract_address(text):
@@ -71,24 +72,26 @@ class FaucetExecutor:
             tx_hash = receipt["transactionHash"].hex()
             self.rate_limiter.add(message.user_id, address)
             logging.info("transaction %s to %s confirmed", tx_hash, address)
+            return Status.SUCCESS
         except Exception as ex:
             logging.error("failed to send transaction %s: %s", raw_tx, ex)
+            return Status.ERROR
 
-    def process_message(self, message: Message):
+    def process_message(self, message: Message) -> Status:
         if not self.run_validators(message):
-            return
+            return Status.INVALID
 
         address = extract_address(message.text)
         if not address:
             self.log_issue(message, "address not found")
-            return
+            return Status.INVALID
 
         if self.rate_limiter.is_rate_limited(message.user_id, address):
             logging.warning(
                 "(%s, %s) was rate limited, skipping", message.user_id, address
             )
-            return
+            return Status.RATE_LIMITED
 
         transaction = self.create_transaction(address)
 
-        self.send_transaction(message, address, transaction)
+        return self.send_transaction(message, address, transaction)

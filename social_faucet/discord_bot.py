@@ -5,13 +5,22 @@ import discord
 from discord.message import Message as DiscordMessage
 
 from social_faucet.faucet_executor import FaucetExecutor
-from social_faucet.types import Message
+from social_faucet.types import Message, Status
+
+
+EMOJIS = {
+    Status.SUCCESS: "👍",
+    Status.RATE_LIMITED: "🚓",
+    Status.INVALID: "🤷‍♀️",
+    Status.ERROR: "🚧",
+}
 
 
 class FaucetDiscordClient(discord.Client):
     def __init__(
         self, faucet_executor: FaucetExecutor, channels: Optional[Set[str]] = None
     ):
+        super().__init__()
         self.channels = channels
         self.faucet_executor = faucet_executor
 
@@ -28,5 +37,6 @@ class FaucetDiscordClient(discord.Client):
             user_id=message.author.nick,
             text=message.content,
         )
-        self.faucet_executor.process_message(faucet_message)
-        await message.add_reaction("👍")
+        status = self.faucet_executor.process_message(faucet_message)
+        emoji = EMOJIS[status]
+        await message.add_reaction(emoji)
