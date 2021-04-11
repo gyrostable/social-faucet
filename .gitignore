@@ -1,5 +1,6 @@
 .env
-rate_limit.db
+*.db
 venv
 .venv
 tmp
+*.egg-info
