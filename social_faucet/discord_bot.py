@@ -34,7 +34,7 @@ class FaucetDiscordClient(discord.Client):
         faucet_message = Message(
             source="discord",
             id=str(message.id),
-            user_id=message.author.nick,
+            user_id=message.author.id,  # type: ignore
             text=message.content,
         )
         status = self.faucet_executor.process_message(faucet_message)
