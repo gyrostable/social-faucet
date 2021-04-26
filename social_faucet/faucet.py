@@ -24,7 +24,7 @@ class Faucet(ABC):
         pass
 
     @abstractmethod
-    def create_transaction_builder(self, web3: Web3) -> TransactionBuilder:
+    def create_transaction_builders(self, web3: Web3) -> List[TransactionBuilder]:
         pass
 
     @abstractmethod
@@ -32,12 +32,34 @@ class Faucet(ABC):
         pass
 
 
-class TwitterKovanFaucet(Faucet):
-    def __init__(self, keywords: List[str]):
+class WithMintOwnerTxBuilder:
+    def __init__(self, address, gas, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.address = address
+        self.gas = gas
+
+    def create_mint_as_owner_transaction_builder(self, web3):
+        with open(path.join(settings.DATA_PATH, "meta-faucet.json")) as f:
+            abi = json.load(f)
+        contract = web3.eth.contract(abi=abi, address=self.address)  # type: ignore
+        return MintAsOwnerTransactionBuilder(contract=contract, gas=self.gas)
+
+
+class TwitterKovanFaucet(WithMintOwnerTxBuilder, Faucet):
+    def __init__(
+        self,
+        keywords: List[str],
+        address: str = settings.META_FAUCET_ADDRESS,
+        gas: int = settings.META_FAUCET_GAS,
+    ):
+        super().__init__(address, gas)
         self.keywords = keywords
 
-    def create_transaction_builder(self, web3: Web3):
-        return SendETHTransactionBuilder()
+    def create_transaction_builders(self, web3: Web3):
+        return [
+            SendETHTransactionBuilder(),
+            self.create_mint_as_owner_transaction_builder(web3),
+        ]
 
     def create_validators(self) -> List[Validator]:
         return [RetweetValidator(), KeywordsValidator(settings.TWEET_TEXTS)]
@@ -57,22 +79,21 @@ class TwitterKovanFaucet(Faucet):
         return auth
 
 
-class DiscordMintTokensAsOwnerKovanFaucet(Faucet):
+class DiscordMintTokensAsOwnerKovanFaucet(WithMintOwnerTxBuilder, Faucet):
     def __init__(
         self,
         channels: Optional[Tuple[str, ...]] = settings.DISCORD_CHANNELS,
         address: str = settings.META_FAUCET_ADDRESS,
         gas: int = settings.META_FAUCET_GAS,
     ):
-        self.address = address
-        self.gas = gas
+        super().__init__(address, gas)
         self.channels = set(channels) if channels else None
 
-    def create_transaction_builder(self, web3: Web3) -> TransactionBuilder:
-        with open(path.join(settings.DATA_PATH, "meta-faucet.json")) as f:
-            abi = json.load(f)
-        contract = web3.eth.contract(abi=abi, address=self.address)  # type: ignore
-        return MintAsOwnerTransactionBuilder(contract=contract, gas=self.gas)
+    def create_transaction_builders(self, web3: Web3) -> List[TransactionBuilder]:
+        return [
+            SendETHTransactionBuilder(),
+            self.create_mint_as_owner_transaction_builder(web3),
+        ]
 
     def create_validators(self) -> List[Validator]:
         return []

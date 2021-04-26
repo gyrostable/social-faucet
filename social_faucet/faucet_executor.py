@@ -25,7 +25,7 @@ class FaucetExecutor:
         self,
         web3: web3.Web3,
         rate_limiter: RateLimiter,
-        transaction_builder: TransactionBuilder,
+        transaction_builders: List[TransactionBuilder],
         validators: List[Validator] = None,
         private_key: Optional[str] = settings.KOVAN_PRIVATE_KEY,
     ):
@@ -33,7 +33,7 @@ class FaucetExecutor:
         if validators is None:
             validators = []
         self.validators = validators
-        self.transaction_builder = transaction_builder
+        self.transaction_builders = transaction_builders
         self.rate_limiter = rate_limiter
         self.web3 = web3
         self.private_key = private_key
@@ -56,9 +56,9 @@ class FaucetExecutor:
             self.log_issue(message, f"invalid: {ex}")
             return False
 
-    def create_transaction(self, address: str) -> dict:
+    def create_transaction(self, tx_builder: TransactionBuilder, address: str) -> dict:
         nonce = self.web3.eth.get_transaction_count(settings.KOVAN_ADDRESS)
-        transaction = self.transaction_builder.build_transaction(address)
+        transaction = tx_builder.build_transaction(address)
         transaction.update({"nonce": nonce, "gasPrice": settings.GAS_PRICE})
         return transaction
 
@@ -68,7 +68,7 @@ class FaucetExecutor:
         try:
             tx = self.web3.eth.send_raw_transaction(signed_tx.rawTransaction)
             logging.info("sent transaction %s", tx.hex())
-            receipt = self.web3.eth.waitForTransactionReceipt(tx)
+            receipt = self.web3.eth.waitForTransactionReceipt(tx, timeout=20)
             tx_hash = receipt["transactionHash"].hex()
             self.rate_limiter.add(message.user_id, address)
             logging.info("transaction %s to %s confirmed", tx_hash, address)
@@ -92,6 +92,9 @@ class FaucetExecutor:
             )
             return Status.RATE_LIMITED
 
-        transaction = self.create_transaction(address)
-
-        return self.send_transaction(message, address, transaction)
+        for tx_builder in self.transaction_builders:
+            transaction = self.create_transaction(tx_builder, address)
+            result = self.send_transaction(message, address, transaction)
+            if result != Status.SUCCESS:
+                return result
+        return Status.SUCCESS

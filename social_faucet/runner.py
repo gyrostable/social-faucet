@@ -16,12 +16,12 @@ from social_faucet.rate_limiter import RateLimiter
 def run_faucet(web3: Web3, faucet: Faucet, db_path: str):
     with dbm.open(db_path, "c") as db:
         rate_limiter = RateLimiter(db)
-        transaction_builder = faucet.create_transaction_builder(web3)
+        transaction_builders = faucet.create_transaction_builders(web3)
         validators = faucet.create_validators()
         faucet_executor = FaucetExecutor(
             web3,
             rate_limiter,
-            transaction_builder=transaction_builder,
+            transaction_builders=transaction_builders,
             validators=validators,
         )
 

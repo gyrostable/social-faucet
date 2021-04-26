@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Optional, Set
 
@@ -6,7 +7,6 @@ from discord.message import Message as DiscordMessage
 
 from social_faucet.faucet_executor import FaucetExecutor
 from social_faucet.types import Message, Status
-
 
 EMOJIS = {
     Status.SUCCESS: "👍",
@@ -37,6 +37,9 @@ class FaucetDiscordClient(discord.Client):
             user_id=message.author.id,  # type: ignore
             text=message.content,
         )
-        status = self.faucet_executor.process_message(faucet_message)
+        loop = asyncio.get_running_loop()
+        status = await loop.run_in_executor(
+            None, self.faucet_executor.process_message, faucet_message
+        )
         emoji = EMOJIS[status]
         await message.add_reaction(emoji)
