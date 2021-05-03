@@ -70,7 +70,6 @@ class FaucetExecutor:
             logging.info("sent transaction %s", tx.hex())
             receipt = self.web3.eth.waitForTransactionReceipt(tx, timeout=20)
             tx_hash = receipt["transactionHash"].hex()
-            self.rate_limiter.add(message.user_id, address)
             logging.info("transaction %s to %s confirmed", tx_hash, address)
             return Status.SUCCESS
         except Exception as ex:
@@ -114,4 +113,6 @@ class FaucetExecutor:
             result = self._execute_transaction(tx_builder, address, message)
             if result != Status.SUCCESS:
                 return result
+
+        self.rate_limiter.add(message.user_id, address)
         return Status.SUCCESS
