@@ -1,14 +1,14 @@
 import logging
-
-from social_faucet.transaction_builder import TransactionBuilder
-from social_faucet.validation import ValidationError, Validator
+import time
 from typing import List, Optional
 
 import web3
 
 from social_faucet import settings
 from social_faucet.rate_limiter import RateLimiter
+from social_faucet.transaction_builder import TransactionBuilder
 from social_faucet.types import Message, Status
+from social_faucet.validation import ValidationError, Validator
 
 
 def extract_address(text):
@@ -74,8 +74,26 @@ class FaucetExecutor:
             logging.info("transaction %s to %s confirmed", tx_hash, address)
             return Status.SUCCESS
         except Exception as ex:
-            logging.error("failed to send transaction %s: %s", raw_tx, ex)
+            logging.error("failed to send transaction %s: %s", raw_tx, str(ex))
             return Status.ERROR
+
+    def _execute_transaction(
+        self,
+        tx_builder: TransactionBuilder,
+        address: str,
+        message: Message,
+        retries: int = 3,
+    ):
+        result = Status.SUCCESS
+        for i in range(retries + 1):
+            transaction = self.create_transaction(tx_builder, address)
+            result = self.send_transaction(message, address, transaction)
+            if result == Status.SUCCESS:
+                return result
+            time_to_sleep = 2 ** 1
+            logging.warning("failed to send transaction, sleeping %ss", time_to_sleep)
+            time.sleep(2 ** i)
+        return result
 
     def process_message(self, message: Message) -> Status:
         if not self.run_validators(message):
@@ -93,8 +111,7 @@ class FaucetExecutor:
             return Status.RATE_LIMITED
 
         for tx_builder in self.transaction_builders:
-            transaction = self.create_transaction(tx_builder, address)
-            result = self.send_transaction(message, address, transaction)
+            result = self._execute_transaction(tx_builder, address, message)
             if result != Status.SUCCESS:
                 return result
         return Status.SUCCESS
