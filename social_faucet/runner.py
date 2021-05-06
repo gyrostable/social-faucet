@@ -1,9 +1,10 @@
 import dbm
+from threading import Thread
 from typing import List
 
 from web3.main import Web3
 
-from social_faucet import settings
+from social_faucet.http import app
 from social_faucet.faucet import (
     DiscordMintTokensAsOwnerKovanFaucet,
     Faucet,
@@ -11,6 +12,13 @@ from social_faucet.faucet import (
 )
 from social_faucet.faucet_executor import FaucetExecutor
 from social_faucet.rate_limiter import RateLimiter
+
+
+def launch_control_app(rate_limiter: RateLimiter, faucet_executor: FaucetExecutor):
+    app.rate_limiter = rate_limiter
+    app.faucet_executor = faucet_executor
+    app_thread = Thread(target=app.run, kwargs={"debug": False}, daemon=True)
+    app_thread.start()
 
 
 def run_faucet(web3: Web3, faucet: Faucet, db_path: str):
@@ -24,6 +32,8 @@ def run_faucet(web3: Web3, faucet: Faucet, db_path: str):
             transaction_builders=transaction_builders,
             validators=validators,
         )
+
+        launch_control_app(rate_limiter, faucet_executor)
 
         faucet.listen(faucet_executor)
 

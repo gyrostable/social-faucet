@@ -62,7 +62,7 @@ class FaucetExecutor:
         transaction.update({"nonce": nonce, "gasPrice": settings.GAS_PRICE})
         return transaction
 
-    def send_transaction(self, message: Message, address: str, raw_tx: dict):
+    def send_transaction(self, address: str, raw_tx: dict):
         logging.info("sending %s", raw_tx)
         signed_tx = self.web3.eth.account.sign_transaction(raw_tx, self.private_key)
         try:
@@ -80,19 +80,27 @@ class FaucetExecutor:
         self,
         tx_builder: TransactionBuilder,
         address: str,
-        message: Message,
         retries: int = 3,
     ):
         result = Status.SUCCESS
         for i in range(retries + 1):
             transaction = self.create_transaction(tx_builder, address)
-            result = self.send_transaction(message, address, transaction)
+            result = self.send_transaction(address, transaction)
             if result == Status.SUCCESS:
                 return result
             time_to_sleep = 2 ** 1
             logging.warning("failed to send transaction, sleeping %ss", time_to_sleep)
             time.sleep(2 ** i)
         return result
+
+    def send_transactions(self, address: str, user_id: Optional[str] = None):
+        self.rate_limiter.add(address=address, user_id=user_id)
+        for tx_builder in self.transaction_builders:
+            result = self._execute_transaction(tx_builder, address)
+            if result != Status.SUCCESS:
+                self.rate_limiter.remove(address=address, user_id=user_id)
+                return result
+        return Status.SUCCESS
 
     def process_message(self, message: Message) -> Status:
         if not self.run_validators(message):
@@ -109,10 +117,4 @@ class FaucetExecutor:
             )
             return Status.RATE_LIMITED
 
-        for tx_builder in self.transaction_builders:
-            result = self._execute_transaction(tx_builder, address, message)
-            if result != Status.SUCCESS:
-                return result
-
-        self.rate_limiter.add(message.user_id, address)
-        return Status.SUCCESS
+        return self.send_transactions(address, user_id=message.user_id)
