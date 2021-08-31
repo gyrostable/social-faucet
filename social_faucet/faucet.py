@@ -82,7 +82,7 @@ class TwitterKovanFaucet(WithMintOwnerTxBuilder, Faucet):
 class DiscordMintTokensAsOwnerKovanFaucet(WithMintOwnerTxBuilder, Faucet):
     def __init__(
         self,
-        channels: Optional[Tuple[str, ...]] = settings.DISCORD_CHANNELS,
+        channels: Optional[List[str]] = settings.DISCORD_CHANNELS,
         address: str = settings.META_FAUCET_ADDRESS,
         gas: int = settings.META_FAUCET_GAS,
     ):
