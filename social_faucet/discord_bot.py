@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Optional, Set
+import threading
 
 import discord
 from discord.message import Message as DiscordMessage
@@ -24,6 +25,7 @@ class FaucetDiscordClient(discord.Client):
         self.channels = channels
         self.faucet_executor = faucet_executor
         self.message_queue = []
+        self._message_queue_lock = threading.Lock()
 
     async def on_ready(self):
         logging.info(f"logged in discord as {self.user}")
@@ -33,7 +35,8 @@ class FaucetDiscordClient(discord.Client):
         if self.channels is not None and message.channel.name not in self.channels:
             return
 
-        self.message_queue.append(message)
+        with self._message_queue_lock:
+            self.message_queue.append(message)
 
     async def process_queue(self):
         while True:
@@ -41,13 +44,20 @@ class FaucetDiscordClient(discord.Client):
                 await asyncio.sleep(0.1)
                 continue
 
-            message = self.message_queue.pop(0)
-            faucet_message = Message(
-                source="discord",
-                id=str(message.id),
-                user_id=message.author.id,  # type: ignore
-                text=message.content,
-            )
-            status = self.faucet_executor.process_message(faucet_message)
-            emoji = EMOJIS[status]
-            await message.add_reaction(emoji)
+            with self._message_queue_lock:
+                message = self.message_queue.pop(0)
+            try:
+                await self.process_message(message)
+            except Exception as ex:  # pylint: disable=broad-except
+                logging.warning("failed to process %s: %s", message, ex)
+
+    async def process_message(self, message: DiscordMessage):
+        faucet_message = Message(
+            source="discord",
+            id=str(message.id),
+            user_id=message.author.id,  # type: ignore
+            text=message.content,
+        )
+        status = self.faucet_executor.process_message(faucet_message)
+        emoji = EMOJIS[status]
+        await message.add_reaction(emoji)
