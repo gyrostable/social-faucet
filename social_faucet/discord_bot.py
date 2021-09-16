@@ -23,23 +23,31 @@ class FaucetDiscordClient(discord.Client):
         super().__init__()
         self.channels = channels
         self.faucet_executor = faucet_executor
+        self.message_queue = []
 
     async def on_ready(self):
         logging.info(f"logged in discord as {self.user}")
+        asyncio.create_task(self.process_queue())
 
     async def on_message(self, message: DiscordMessage):
         if self.channels is not None and message.channel.name not in self.channels:
             return
 
-        faucet_message = Message(
-            source="discord",
-            id=str(message.id),
-            user_id=message.author.id,  # type: ignore
-            text=message.content,
-        )
-        loop = asyncio.get_running_loop()
-        status = await loop.run_in_executor(
-            None, self.faucet_executor.process_message, faucet_message
-        )
-        emoji = EMOJIS[status]
-        await message.add_reaction(emoji)
+        self.message_queue.append(message)
+
+    async def process_queue(self):
+        while True:
+            if not self.message_queue:
+                await asyncio.sleep(0.1)
+                continue
+
+            message = self.message_queue.pop(0)
+            faucet_message = Message(
+                source="discord",
+                id=str(message.id),
+                user_id=message.author.id,  # type: ignore
+                text=message.content,
+            )
+            status = self.faucet_executor.process_message(faucet_message)
+            emoji = EMOJIS[status]
+            await message.add_reaction(emoji)
