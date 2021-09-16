@@ -1,3 +1,4 @@
+import time
 import asyncio
 import logging
 from typing import Optional, Set
@@ -26,10 +27,14 @@ class FaucetDiscordClient(discord.Client):
         self.faucet_executor = faucet_executor
         self.message_queue = []
         self._message_queue_lock = threading.Lock()
+        self._messages_processed = []
+        self._messages_processed_lock = threading.Lock()
 
     async def on_ready(self):
         logging.info(f"logged in discord as {self.user}")
-        asyncio.create_task(self.process_queue())
+        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(loop.run_in_executor(None, self.process_queue))
+        asyncio.create_task(self.finalize_processed())
 
     async def on_message(self, message: DiscordMessage):
         if self.channels is not None and message.channel.name not in self.channels:
@@ -38,20 +43,32 @@ class FaucetDiscordClient(discord.Client):
         with self._message_queue_lock:
             self.message_queue.append(message)
 
-    async def process_queue(self):
+    async def finalize_processed(self):
+        while True:
+            if not self._messages_processed:
+                await asyncio.sleep(0.1)
+                continue
+            with self._messages_processed_lock:
+                message, emoji = self._messages_processed.pop(0)
+            try:
+                await message.add_reaction(emoji)
+            except Exception as ex:
+                logging.warning("failed to send reaction to %s: %s", message, ex)
+
+    def process_queue(self):
         while True:
             if not self.message_queue:
-                await asyncio.sleep(0.1)
+                time.sleep(0.1)
                 continue
 
             with self._message_queue_lock:
                 message = self.message_queue.pop(0)
             try:
-                await self.process_message(message)
+                self.process_message(message)
             except Exception as ex:  # pylint: disable=broad-except
                 logging.warning("failed to process %s: %s", message, ex)
 
-    async def process_message(self, message: DiscordMessage):
+    def process_message(self, message: DiscordMessage):
         faucet_message = Message(
             source="discord",
             id=str(message.id),
@@ -60,4 +77,5 @@ class FaucetDiscordClient(discord.Client):
         )
         status = self.faucet_executor.process_message(faucet_message)
         emoji = EMOJIS[status]
-        await message.add_reaction(emoji)
+        with self._messages_processed_lock:
+            self._messages_processed.append((message, emoji))
