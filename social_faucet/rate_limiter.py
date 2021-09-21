@@ -43,7 +43,7 @@ class RateLimiter:
             return int(self.db.get(self._address_key(address), 0))
 
     def is_rate_limited(self, user_id, address):
-        if user_id in self.excluded_users or address in self.excluded_users:
+        if str(user_id) in self.excluded_users or address in self.excluded_users:
             return False
         user_timestamp = self.get_user(user_id)
         address_timestamp = self.get_address(address)
