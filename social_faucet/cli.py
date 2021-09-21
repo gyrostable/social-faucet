@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 from social_faucet import runner, settings
 
@@ -37,10 +38,20 @@ def run():
     if not args.command:
         parser.error("no command provided")
 
+    rate_limit_exclusions = None
+    if settings.RATE_LIMIT_EXCLUSIONS:
+        rate_limit_exclusions = [
+            v.strip() for v in settings.RATE_LIMIT_EXCLUSIONS.split(",")
+        ]
+
     if args.command == "twitter-kovan":
-        runner.run_twitter_kovan_faucet(args.keywords, args.db, args.control_port)
+        runner.run_twitter_kovan_faucet(
+            args.keywords, args.db, args.control_port, rate_limit_exclusions
+        )
     elif args.command == "discord-kovan-tokens":
-        runner.run_discord_tokens_kovan_faucet(args.db, args.control_port)
+        runner.run_discord_tokens_kovan_faucet(
+            args.db, args.control_port, rate_limit_exclusions
+        )
 
 
 if __name__ == "__main__":
