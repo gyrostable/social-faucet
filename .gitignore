@@ -4,3 +4,4 @@ venv
 .venv
 tmp
 *.egg-info
+__pycache__
