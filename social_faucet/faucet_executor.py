@@ -61,6 +61,7 @@ class FaucetExecutor:
         transaction = tx_builder.build_transaction(address)
         transaction.update(
             {
+                "chainId": self.web3.eth.chain_id,
                 "nonce": nonce,
                 "maxFeePerGas": self.web3.toWei(settings.GAS_PRICE, "gwei"),
                 "maxPriorityFeePerGas": self.web3.toWei(
