@@ -26,4 +26,5 @@ class MintAsOwnerTransactionBuilder(TransactionBuilder):
 
     def build_transaction(self, receiver: str) -> dict:
         tx = self.contract.functions.mintAllAsOwner(dst=receiver)
-        return tx.buildTransaction({"gas": self.gas})  # type: ignore
+        # NOTE: we avoid `buildTransaction` populating gas price and do it later
+        return tx.buildTransaction({"gas": self.gas, "gasPrice": 0})  # type: ignore

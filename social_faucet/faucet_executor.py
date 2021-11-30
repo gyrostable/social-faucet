@@ -59,6 +59,8 @@ class FaucetExecutor:
     def create_transaction(self, tx_builder: TransactionBuilder, address: str) -> dict:
         nonce = self.web3.eth.get_transaction_count(settings.KOVAN_ADDRESS)
         transaction = tx_builder.build_transaction(address)
+        if transaction.get("gasPrice") == 0:
+            transaction.pop("gasPrice", None)
         transaction.update(
             {
                 "chainId": self.web3.eth.chain_id,
