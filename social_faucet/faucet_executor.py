@@ -93,6 +93,8 @@ class FaucetExecutor:
     ):
         result = Status.SUCCESS
         for i in range(retries + 1):
+            transaction = None
+            warn_params = {}
             try:
                 transaction = self.create_transaction(tx_builder, address)
                 result = self.send_transaction(address, transaction)
@@ -101,12 +103,17 @@ class FaucetExecutor:
                 error = f"received status {result}"
             except Exception as ex:
                 error = str(ex)
+                warn_params = {"exc_info": ex}
 
-            time_to_sleep = 2 ** 1
+            time_to_sleep = 2 ** i
             logging.warning(
-                "failed to send transaction: %s, sleeping %ss", error, time_to_sleep
+                "failed to send transaction %s: %s, sleeping %ss",
+                transaction,
+                error,
+                time_to_sleep,
+                **warn_params,
             )
-            time.sleep(2 ** i)
+            time.sleep(time_to_sleep)
         return result
 
     def send_transactions(self, address: str, user_id: Optional[str] = None):
