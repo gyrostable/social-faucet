@@ -59,7 +59,15 @@ class FaucetExecutor:
     def create_transaction(self, tx_builder: TransactionBuilder, address: str) -> dict:
         nonce = self.web3.eth.get_transaction_count(settings.KOVAN_ADDRESS)
         transaction = tx_builder.build_transaction(address)
-        transaction.update({"nonce": nonce, "gasPrice": settings.GAS_PRICE})
+        transaction.update(
+            {
+                "nonce": nonce,
+                "maxFeePerGas": self.web3.toWei(settings.GAS_PRICE, "gwei"),
+                "maxPriorityFeePerGas": self.web3.toWei(
+                    settings.MAX_PRIORITY_FEE_PER_GAS, "gwei"
+                ),
+            }
+        )
         return transaction
 
     def send_transaction(self, address: str, raw_tx: dict):
