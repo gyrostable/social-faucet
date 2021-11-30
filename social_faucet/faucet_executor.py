@@ -82,7 +82,7 @@ class FaucetExecutor:
             logging.info("transaction %s to %s confirmed", tx_hash, address)
             return Status.SUCCESS
         except Exception as ex:
-            logging.error("failed to send transaction %s: %s", raw_tx, str(ex))
+            logging.error("failed to send transaction %s: %s", raw_tx, exc_info=ex)
             return Status.ERROR
 
     def _execute_transaction(
